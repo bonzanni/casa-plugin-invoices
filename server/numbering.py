@@ -55,6 +55,16 @@ def _year_text(year):
 MAX_LITERAL = 20               # with {YYYY} and {seq:9}: numbers of at most ~33 characters
 
 
+def check_new_pattern_length(pattern: str) -> None:
+    """For a pattern being set: its literal text is at most MAX_LITERAL
+    characters. Only checked on set, so a pattern stored before the limit keeps
+    issuing (next_number validates the stored pattern on every finalize)."""
+    if len(_TOKEN.sub("", pattern)) > MAX_LITERAL:
+        raise ValidationError(
+            f"numbering.pattern: at most {MAX_LITERAL} characters besides {{YYYY}} and "
+            "{seq:N} (the number must stay readable on the PDF)")
+
+
 def validate_pattern(pattern: str) -> None:
     """Raise ValidationError unless ``pattern`` is a usable number pattern.
 
@@ -69,10 +79,6 @@ def validate_pattern(pattern: str) -> None:
             "(use letters, digits, '.', '_', '-' or spaces; e.g. '-' instead of '/')")
     if pattern.startswith("."):
         raise ValidationError("numbering.pattern: must not start with '.'")
-    if len(_TOKEN.sub("", pattern)) > MAX_LITERAL:
-        raise ValidationError(
-            f"numbering.pattern: at most {MAX_LITERAL} characters besides {{YYYY}} and "
-            "{seq:N} (the number must stay readable on the PDF)")
 
 
 def render(pattern: str, year: int, seq: int) -> str:

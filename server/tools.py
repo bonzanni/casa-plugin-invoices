@@ -163,6 +163,7 @@ def company_set(args):
         raise ValidationError("numbering: expected an object")
     if "pattern" in num_patch:
         numbering.validate_pattern(num_patch["pattern"])
+        numbering.check_new_pattern_length(num_patch["pattern"])
     company = model.merge_company(current, fields)
     n = company["numbering"]
     year = _this_year(company)

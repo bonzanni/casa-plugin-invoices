@@ -316,6 +316,12 @@ class TestCompany(ToolsTestBase):
                    {"fields": {"numbering": {"pattern": "{YYYY}/{seq:3}"}}})
         self.assertEqual(store.read_json("company.json"), before)
 
+    def test_overlong_pattern_refused(self):
+        text = self.fails("invoice_company_set", {"fields": {
+            **COMPANY, "numbering": {"pattern": "X" * 21 + "-{YYYY}-{seq:4}"}}})
+        self.assertIn("at most 20 characters", text)
+        self.assertFalse(store.exists("company.json"))
+
     def test_pattern_change_carries_series_forward(self):
         self.setup_company()
         self.setup_customer()

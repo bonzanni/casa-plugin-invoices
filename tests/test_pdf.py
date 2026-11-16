@@ -342,9 +342,12 @@ class TestInvoicePdf(unittest.TestCase):
 
     def test_page_label_fits_the_longest_invoice_number(self):
         pattern = "X" * numbering.MAX_LITERAL + "{YYYY}{seq:9}"
-        numbering.validate_pattern(pattern)
+        numbering.check_new_pattern_length(pattern)
         with self.assertRaises(model.ValidationError):
-            numbering.validate_pattern("X" + pattern)
+            numbering.check_new_pattern_length("X" + pattern)
+        # a longer pattern stored before the limit still issues
+        self.assertEqual(numbering.next_number("X" + pattern, 2026, [],
+                                               {"next_seq": 1, "seq_year": None})[1], 1)
         number = numbering.render(pattern, 2026, 1)
         items = [{"description": f"Item {i}", "qty": "1", "unit_price": "1.00"} for i in range(50)]
         texts = pdfparse.texts(invoice_pdf.render_invoice(_content(items), number, draft=False))
