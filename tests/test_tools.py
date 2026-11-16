@@ -316,6 +316,16 @@ class TestCompany(ToolsTestBase):
                    {"fields": {"numbering": {"pattern": "{YYYY}/{seq:3}"}}})
         self.assertEqual(store.read_json("company.json"), before)
 
+    def test_overlong_tax_name_refused_on_set_only(self):
+        text = self.fails("invoice_company_set", {"fields": {**COMPANY, "tax_name": "X" * 31}})
+        self.assertIn("tax_name: at most 30", text)
+        self.setup_company()
+        stored = store.read_json("company.json")
+        stored["tax_name"] = "X" * 31                    # stored before the limit
+        store.write_json("company.json", stored)
+        self.ok("invoice_company_set", {"fields": {"bank": "Other Bank"}})
+        self.assertEqual(store.read_json("company.json")["bank"], "Other Bank")
+
     def test_overlong_pattern_refused(self):
         text = self.fails("invoice_company_set", {"fields": {
             **COMPANY, "numbering": {"pattern": "X" * 21 + "-{YYYY}-{seq:4}"}}})

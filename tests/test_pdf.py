@@ -337,8 +337,11 @@ class TestInvoicePdf(unittest.TestCase):
             self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F1", 9), right + 0.01)
 
     def test_tax_name_length_capped(self):
+        model.check_new_tax_name("X" * model.MAX_TAX_NAME)
         with self.assertRaises(model.ValidationError):
-            model.validate_company({**COMPANY, "tax_name": "X" * (model.MAX_TAX_NAME + 1)})
+            model.check_new_tax_name("X" * (model.MAX_TAX_NAME + 1))
+        # a longer one stored before the limit still validates (other edits keep working)
+        model.validate_company({**COMPANY, "tax_name": "X" * (model.MAX_TAX_NAME + 1)})
 
     def test_page_label_fits_the_longest_invoice_number(self):
         pattern = "X" * numbering.MAX_LITERAL + "{YYYY}{seq:9}"

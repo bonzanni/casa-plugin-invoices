@@ -155,13 +155,18 @@ def merge_company(current: dict | None, patch: dict) -> dict:
     return validate_company(c)
 
 
+def check_new_tax_name(value) -> None:
+    """For a tax_name being set: at most MAX_TAX_NAME characters. Only checked
+    on set, so a longer one stored before the limit does not block other edits."""
+    if isinstance(value, str) and len(value.strip()) > MAX_TAX_NAME:
+        raise ValidationError(f"tax_name: at most {MAX_TAX_NAME} characters, e.g. VAT, BTW, MwSt")
+
+
 def validate_company(c: dict) -> dict:
     _require(c, _COMPANY_REQUIRED, "company")
     for f in _COMPANY_TEXT:
         if f in c:
             c[f] = _text(c[f], f, required=f in _COMPANY_REQUIRED)
-    if len(c.get("tax_name") or "") > MAX_TAX_NAME:
-        raise ValidationError(f"tax_name: at most {MAX_TAX_NAME} characters, e.g. VAT, BTW, MwSt")
     c["address_lines"] = _lines(c["address_lines"], "address_lines")
     if c.get("email"):
         c["email"] = _email(c["email"], "email")

@@ -158,6 +158,7 @@ def company_set(args):
     if not isinstance(fields, dict):
         raise ValidationError("fields: expected an object")
     current = store.read_json("company.json")
+    model.check_new_tax_name(fields.get("tax_name"))
     num_patch = fields.get("numbering") or {}
     if not isinstance(num_patch, dict):
         raise ValidationError("numbering: expected an object")
