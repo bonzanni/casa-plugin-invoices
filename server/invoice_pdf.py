@@ -101,9 +101,11 @@ class _Layout:
             return
         what = "Draft invoice" if self.draft else f"Invoice {self.number}"
         for i in range(n):
+            label = f"{what}  ·  Page {i + 1} of {n}"
+            size = min(7, 7 * CONTENT_W / pdf.text_width(label, "F2", 7))   # as the footer
             self.doc.select_page(i)
-            self.doc.text_center(LEFT + CONTENT_W / 2, FOOTER_Y + 22,
-                                 f"{what}  ·  Page {i + 1} of {n}", "F2", 7, TEXT_MUTED)
+            self.doc.text_center(LEFT + CONTENT_W / 2, FOOTER_Y + 22, label, "F2", size,
+                                 TEXT_MUTED)
 
     def new_page(self):
         self._finish_page()

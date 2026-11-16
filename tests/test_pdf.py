@@ -320,7 +320,7 @@ class TestInvoicePdf(unittest.TestCase):
         global COMPANY
         saved = COMPANY
         try:
-            COMPANY = model.validate_company({**saved, "tax_name": "Belasting toegevoegde waarde " * 3})
+            COMPANY = model.validate_company({**saved, "tax_name": "Belasting toegevoegde waarde"})
             data = invoice_pdf.render_invoice(_content(), "INV-1", draft=False)
         finally:
             COMPANY = saved
@@ -331,9 +331,24 @@ class TestInvoicePdf(unittest.TestCase):
         right = invoice_pdf.COL_AMOUNT_R - pdf.text_width("€ 8.757,84", "F1", 9) - 12
         labels = [t for t in texts if t["x"] == round(invoice_pdf.LEFT + invoice_pdf.CONTENT_W
                                                       * 0.55, 3) and t["size"] == 9]
-        self.assertGreater(len(labels), 3)                  # labels wrapped
+        self.assertGreater(len(labels), 2)                  # labels wrapped
         for t in labels:
             self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F1", 9), right + 0.01)
+
+    def test_tax_name_length_capped(self):
+        with self.assertRaises(model.ValidationError):
+            model.validate_company({**COMPANY, "tax_name": "X" * (model.MAX_TAX_NAME + 1)})
+
+    def test_page_label_fits_a_long_invoice_number(self):
+        items = [{"description": f"Item {i}", "qty": "1", "unit_price": "1.00"} for i in range(50)]
+        number = "INV-" + "9" * 156
+        texts = pdfparse.texts(invoice_pdf.render_invoice(_content(items), number, draft=False))
+        labels = [t for t in texts if "Page" in t["text"]]
+        self.assertGreaterEqual(len(labels), 2)
+        for t in labels:
+            self.assertGreaterEqual(t["x"], invoice_pdf.LEFT - 0.1)
+            self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F2", t["size"]),
+                                 invoice_pdf.RIGHT + 0.1)   # size is written to 3 decimals
 
     def test_lines_and_totals_must_pair(self):
         content = _content()

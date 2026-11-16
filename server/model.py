@@ -34,6 +34,7 @@ MAX_LINE_ITEMS = 50
 MAX_QTY = 10000
 MAX_DESCRIPTION = 200          # characters; keeps one item row shorter than a PDF page
 MAX_DETAIL = 1000
+MAX_TAX_NAME = 30              # characters; the totals block must fit on one page
 MAX_PAYMENT_TERMS_DAYS = 365
 
 _MONTHS = ("January", "February", "March", "April", "May", "June", "July",
@@ -159,6 +160,8 @@ def validate_company(c: dict) -> dict:
     for f in _COMPANY_TEXT:
         if f in c:
             c[f] = _text(c[f], f, required=f in _COMPANY_REQUIRED)
+    if len(c.get("tax_name") or "") > MAX_TAX_NAME:
+        raise ValidationError(f"tax_name: at most {MAX_TAX_NAME} characters, e.g. VAT, BTW, MwSt")
     c["address_lines"] = _lines(c["address_lines"], "address_lines")
     if c.get("email"):
         c["email"] = _email(c["email"], "email")
