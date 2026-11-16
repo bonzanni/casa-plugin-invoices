@@ -354,6 +354,10 @@ class TestInvoicePdf(unittest.TestCase):
         number = numbering.render(pattern, 2026, 1)
         items = [{"description": f"Item {i}", "qty": "1", "unit_price": "1.00"} for i in range(50)]
         texts = pdfparse.texts(invoice_pdf.render_invoice(_content(items), number, draft=False))
+        name = next(t for t in texts if t["text"] == COMPANY["name"])
+        num = next(t for t in texts if t["text"] == number)
+        self.assertLess(name["x"] + pdf.text_width(name["text"], "F2", name["size"]) + 8,
+                        num["x"])                         # header: name clear of the number
         labels = [t for t in texts if "Page" in t["text"]]
         self.assertGreaterEqual(len(labels), 2)
         for t in labels:

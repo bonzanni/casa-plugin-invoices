@@ -141,7 +141,8 @@ class _Layout:
     def header(self):
         name, y = self.company["name"], self.y
         size = 22
-        while size > 12 and pdf.text_width(name, "F2", size) > CONTENT_W - 130:
+        room = CONTENT_W - max(130, pdf.text_width(self.number, "F2", 14) + 16)
+        while size > 12 and pdf.text_width(name, "F2", size) > room:
             size -= 1
         self.text(LEFT, y, name, "F2", size, PRIMARY)
         self.right(RIGHT, y + 2, "INVOICE", "F1", 10, TEXT_MUTED)
