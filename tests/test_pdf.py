@@ -25,7 +25,7 @@ COMPANY = model.validate_company({
     "vat_label": "BTW-id",
     "registration_label": "KvK",
     "email": "admin@example.com",
-    "iban": "NL91ABNA0417164300",
+    "iban": "NL00BANK0417164300",
     "bank": "ABN AMRO",
     "bic": "ABNANL2A",
     "tax_name": "BTW",
@@ -164,7 +164,7 @@ class TestInvoicePdf(unittest.TestCase):
         self.assertIn("€ 1.839,15", s)
         self.assertIn("€ 178,92", s)                        # unit price
         self.assertIn("€ 357,84", s)                        # line total from content
-        self.assertIn("IBAN: NL91ABNA0417164300", s)
+        self.assertIn("IBAN: NL00BANK0417164300", s)
         self.assertIn("Reference: INV-2026-0012", s)
         self.assertIn("Account holder: Example Holding B.V.", s)
         self.assertIn("BIC: ABNANL2A", s)

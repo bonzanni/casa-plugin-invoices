@@ -25,7 +25,7 @@ COMPANY = {
     "country": "Netherlands",
     "vat_id": "NL123456789B01",
     "email": "invoices@example.com",
-    "iban": "NL91ABNA0417164300",
+    "iban": "NL00BANK0417164300",
     "bank": "ABN AMRO",
     "tax_name": "BTW",
 }

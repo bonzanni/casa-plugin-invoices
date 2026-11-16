@@ -73,7 +73,7 @@ def main():
                 "name": "Example Holding B.V.", "address_lines": ["Voorbeeldstraat 1",
                                                                   "1234 AB Amsterdam"],
                 "country": "Netherlands", "email": "billing@example.com",
-                "iban": "NL91ABNA0417164300", "bank": "Example Bank", "tax_name": "BTW"},
+                "iban": "NL00BANK0417164300", "bank": "Example Bank", "tax_name": "BTW"},
                 "last_invoice_number": "INV-2026-0011"})
             srv.call("invoice_customer_set", {"customer": "acme", "fields": {
                 "name": "Acme Biotech B.V.", "address_lines": ["Testlaan 2", "5678 CD Utrecht"],

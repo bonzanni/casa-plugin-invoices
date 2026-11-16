@@ -15,7 +15,7 @@ COMPANY = {
     "name": "Example B.V.",
     "address_lines": ["Keizersgracht 1", "1015 CJ Amsterdam"],
     "country": "Netherlands",
-    "iban": "NL91ABNA0417164300",
+    "iban": "NL00BANK0417164300",
     "bank": "ABN AMRO",
 }
 CUSTOMER = {

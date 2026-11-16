@@ -86,7 +86,7 @@ class TestImport(LegacyTestBase):
         self.assertEqual(company["vat_id"], "NL000099998B57")
         self.assertEqual(company["registration_id"], "12345678")
         self.assertEqual(company["email"], "billing@example.com")
-        self.assertEqual(company["iban"], "NL91ABNA0417164300")
+        self.assertEqual(company["iban"], "NL00BANK0417164300")
         self.assertEqual(company["bank"], "Example Bank")
         self.assertEqual(company["vat_label"], "BTW-id")
         self.assertEqual(company["registration_label"], "KvK")

@@ -18,7 +18,7 @@ COMPANY = model.validate_company({
     "name": "Example Holding B.V.",
     "address_lines": ["Keizersgracht 1", "1015 CJ Amsterdam"],
     "country": "Netherlands",
-    "iban": "NL91ABNA0417164300",
+    "iban": "NL00BANK0417164300",
     "bank": "ABN AMRO",
     "tax_name": "BTW",
 })
@@ -345,7 +345,7 @@ class TestRef(unittest.TestCase):
         moved = {**CUSTOMER, "address_lines": ["Other street 1", "5678 CD Utrecht"]}
         r2 = invoice.compute_ref(invoice.frozen_content(self.draft, COMPANY, moved, TEMPLATE))
         self.assertNotEqual(r1, r2)
-        iban = {**COMPANY, "iban": "NL02ABNA0123456789"}
+        iban = {**COMPANY, "iban": "NL00BANK0999999999"}
         r3 = invoice.compute_ref(invoice.frozen_content(self.draft, iban, CUSTOMER, TEMPLATE))
         self.assertNotEqual(r1, r3)
 

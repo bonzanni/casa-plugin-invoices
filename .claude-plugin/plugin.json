@@ -15,6 +15,23 @@
     "casa"
   ],
   "casa": {
+    "provides_tools": [
+      "mcp__plugin_invoices_invoices__invoice_company_get",
+      "mcp__plugin_invoices_invoices__invoice_company_set",
+      "mcp__plugin_invoices_invoices__invoice_customer_get",
+      "mcp__plugin_invoices_invoices__invoice_customer_list",
+      "mcp__plugin_invoices_invoices__invoice_customer_remove",
+      "mcp__plugin_invoices_invoices__invoice_customer_set",
+      "mcp__plugin_invoices_invoices__invoice_discard",
+      "mcp__plugin_invoices_invoices__invoice_edit",
+      "mcp__plugin_invoices_invoices__invoice_finalize",
+      "mcp__plugin_invoices_invoices__invoice_get",
+      "mcp__plugin_invoices_invoices__invoice_import_legacy",
+      "mcp__plugin_invoices_invoices__invoice_list",
+      "mcp__plugin_invoices_invoices__invoice_new",
+      "mcp__plugin_invoices_invoices__invoice_package",
+      "mcp__plugin_invoices_invoices__invoice_preview"
+    ],
     "protectedTools": [
       {
         "name": "invoice_finalize",

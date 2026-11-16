@@ -2,6 +2,9 @@
 
 ## 0.1.0 — 2026-11-16
 
+Casa floor: v0.326.0 (plugin file handoff). The send step needs the Gmail plugin
+0.14.0 or later (cc/bcc).
+
 First release. Successor to `lesina-invoice`, for any Casa owner's company and
 customers.
 

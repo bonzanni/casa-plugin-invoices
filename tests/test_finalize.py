@@ -33,7 +33,7 @@ COMPANY = model.validate_company({
     "country": "Netherlands",
     "vat_id": "NL123456789B01",
     "email": "invoices@example.com",
-    "iban": "NL91ABNA0417164300",
+    "iban": "NL00BANK0417164300",
     "bank": "ABN AMRO",
     "tax_name": "BTW",
 })
@@ -365,7 +365,7 @@ class TestFinalize(FinalizeTestBase):
         cust["email_template"] = "Subject: changed\n\nchanged"
         store.write_json("customers/acme.json", cust)
         comp = store.read_json("company.json")
-        comp["iban"] = "NL02ABNA0123456789"
+        comp["iban"] = "NL00BANK0999999999"
         store.write_json("company.json", comp)
         again = finalize.package(pkg["invoice_number"])
         self.assertNotEqual(again["pdf_path"], pkg["pdf_path"])   # a fresh handoff copy
