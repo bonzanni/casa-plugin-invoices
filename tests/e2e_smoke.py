@@ -2,7 +2,7 @@
 # tests/e2e_smoke.py
 """End-to-end smoke: the real server as a subprocess over stdio.
 
-initialize -> tools/list (15) -> setup -> new -> preview -> finalize, then
+initialize -> tools/list (14) -> setup -> new -> preview -> finalize, then
 checks the published PDF in the temp handoff dir. Run: python3.11 tests/e2e_smoke.py
 """
 import json
@@ -66,7 +66,7 @@ def main():
             print("initialize:", init["result"]["serverInfo"])
             srv.notify("notifications/initialized")
             listed = srv.request("tools/list")["result"]["tools"]
-            assert len(listed) == 15, [t["name"] for t in listed]
+            assert len(listed) == 14, [t["name"] for t in listed]
             print(f"tools/list: {len(listed)} tools")
 
             srv.call("invoice_company_set", {"fields": {

@@ -1,6 +1,6 @@
 {
   "name": "invoices",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Invoicing for Casa: your company and customers, invoice drafts reused from the previous invoice, numbered finalized invoices with an in-process PDF, published to Casa's handoff folder with a filled email ready to send.",
   "author": {
     "name": "Nicola Bonzanni"
@@ -26,7 +26,6 @@
       "mcp__plugin_invoices_invoices__invoice_edit",
       "mcp__plugin_invoices_invoices__invoice_finalize",
       "mcp__plugin_invoices_invoices__invoice_get",
-      "mcp__plugin_invoices_invoices__invoice_import_legacy",
       "mcp__plugin_invoices_invoices__invoice_list",
       "mcp__plugin_invoices_invoices__invoice_new",
       "mcp__plugin_invoices_invoices__invoice_package",
@@ -44,10 +43,6 @@
       {
         "name": "invoice_customer_remove",
         "summary": "Remove customer {customer}"
-      },
-      {
-        "name": "invoice_import_legacy",
-        "summary": "Import company, customer and invoices from lesina-invoice"
       }
     ],
     "resultContract": {
@@ -81,9 +76,6 @@
           "result": "safe"
         },
         "invoice_get": {
-          "result": "safe"
-        },
-        "invoice_import_legacy": {
           "result": "safe"
         },
         "invoice_list": {
