@@ -12,6 +12,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import invoice  # noqa: E402
 import invoice_pdf  # noqa: E402
 import model  # noqa: E402
+import numbering  # noqa: E402
 import pdf  # noqa: E402
 import pdfparse  # noqa: E402
 
@@ -339,16 +340,19 @@ class TestInvoicePdf(unittest.TestCase):
         with self.assertRaises(model.ValidationError):
             model.validate_company({**COMPANY, "tax_name": "X" * (model.MAX_TAX_NAME + 1)})
 
-    def test_page_label_fits_a_long_invoice_number(self):
+    def test_page_label_fits_the_longest_invoice_number(self):
+        pattern = "X" * numbering.MAX_LITERAL + "{YYYY}{seq:9}"
+        numbering.validate_pattern(pattern)
+        with self.assertRaises(model.ValidationError):
+            numbering.validate_pattern("X" + pattern)
+        number = numbering.render(pattern, 2026, 1)
         items = [{"description": f"Item {i}", "qty": "1", "unit_price": "1.00"} for i in range(50)]
-        number = "INV-" + "9" * 156
         texts = pdfparse.texts(invoice_pdf.render_invoice(_content(items), number, draft=False))
         labels = [t for t in texts if "Page" in t["text"]]
         self.assertGreaterEqual(len(labels), 2)
         for t in labels:
-            self.assertGreaterEqual(t["x"], invoice_pdf.LEFT - 0.1)
-            self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F2", t["size"]),
-                                 invoice_pdf.RIGHT + 0.1)   # size is written to 3 decimals
+            self.assertEqual(t["size"], 7)                  # full size, no shrinking
+            self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F2", 7), invoice_pdf.RIGHT)
 
     def test_lines_and_totals_must_pair(self):
         content = _content()

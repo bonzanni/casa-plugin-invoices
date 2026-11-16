@@ -14,6 +14,8 @@ Casa floor: v0.326.0 (unchanged).
   beside their amounts, which stay full size unless a sum is extraordinarily long.
 - Company profile: `tax_name` is at most 30 characters (VAT, BTW, MwSt, ...), so the
   totals block always fits on a page.
+- Numbering: a pattern holds at most 20 characters besides `{YYYY}` and `{seq:N}`,
+  so invoice numbers stay readable in the header and page labels.
 
 ## 0.2.0 — 2026-11-16
 
