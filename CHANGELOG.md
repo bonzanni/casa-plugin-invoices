@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.1 — 2026-11-16
+
+Casa floor: v0.326.0 (unchanged).
+
+- PDF: the QTY, UNIT PRICE and AMOUNT columns are sized from the invoice's own
+  numbers. Large amounts (ten digits and more) no longer overprint the unit price,
+  and long fractional quantities no longer run into the description. Invoices with
+  ordinary numbers keep the same layout.
+- PDF: a multi-page invoice carries "Invoice <number> · Page i of n" (drafts:
+  "Draft invoice · Page i of n") under the footer of every page.
+- PDF: more room between the VAT row and the rule under it; very long totals shrink
+  to fit next to their labels.
+
 ## 0.2.0 — 2026-11-16
 
 Casa floor: v0.326.0 (unchanged).
