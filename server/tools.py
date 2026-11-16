@@ -1,5 +1,5 @@
 # server/tools.py
-"""The 15 MCP tools (spec 5.4): schemas and handlers, registered into
+"""The 14 MCP tools (spec 5.4): schemas and handlers, registered into
 `invoices_server.TOOLS`. A handler returns text or a dict (sent as JSON) and
 raises for errors; the dispatcher holds the write lock around every tool
 registered with `writes=True`, so nothing here takes it.
@@ -16,7 +16,6 @@ import finalize
 import invoice
 import invoice_pdf
 import invoices_server
-import legacy
 import model
 import numbering
 import store
@@ -501,16 +500,3 @@ def invoice_discard(args):
     _draft(draft_id)
     store.delete(f"drafts/{draft_id}.json")
     return f"Discarded draft {draft_id}."
-
-
-@tool("invoice_import_legacy",
-      "One-time import of company, customer and issued invoices from lesina-invoice's "
-      "data dir (path, default next to this plugin's data). Refuses when data exists "
-      "unless force. Show the result's runbook to the operator.",
-      {"path": {"type": "string"}, "force": {"type": "boolean"}},
-      writes=True, setup=False)
-def import_legacy(args):
-    path = args.get("path")
-    if path is not None and not isinstance(path, str):
-        raise ValidationError("path: must be text")
-    return legacy.import_legacy(path, bool(args.get("force")))

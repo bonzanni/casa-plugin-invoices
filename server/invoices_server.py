@@ -3,8 +3,8 @@
 """casa invoices MCP server. Stdlib-only stdio JSON-RPC.
 
 This file only dispatches; every behaviour lives in a focused module
-(store, model, numbering, invoice, email_template, pdf, invoice_pdf, finalize,
-legacy) and the tools are registered by tools.py.
+(store, model, numbering, invoice, email_template, pdf, invoice_pdf,
+finalize) and the tools are registered by tools.py.
 """
 from __future__ import annotations
 

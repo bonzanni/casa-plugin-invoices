@@ -13,13 +13,12 @@ import invoices_server  # noqa: E402
 import tools  # noqa: E402,F401  (registers into invoices_server.TOOLS)
 
 MANIFEST = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-PROTECTED = {"invoice_finalize", "invoice_discard", "invoice_customer_remove",
-             "invoice_import_legacy"}
+PROTECTED = {"invoice_finalize", "invoice_discard", "invoice_customer_remove"}
 
 
 class TestManifest(unittest.TestCase):
-    def test_fifteen_tools(self):
-        self.assertEqual(len(invoices_server.TOOLS), 15)
+    def test_fourteen_tools(self):
+        self.assertEqual(len(invoices_server.TOOLS), 14)
 
     def test_every_tool_declared_in_result_contract(self):
         contract = MANIFEST["casa"]["resultContract"]
@@ -28,7 +27,7 @@ class TestManifest(unittest.TestCase):
         for name, entry in contract["tools"].items():
             self.assertEqual(entry, {"result": "safe"}, name)
 
-    def test_protected_tools_are_exactly_the_four(self):
+    def test_protected_tools_are_exactly_the_three(self):
         names = {p["name"] for p in MANIFEST["casa"]["protectedTools"]}
         self.assertEqual(names, PROTECTED)
 
@@ -45,8 +44,7 @@ class TestManifest(unittest.TestCase):
         writers = {n for n, t in invoices_server.TOOLS.items() if t["writes"]}
         self.assertEqual(writers, {
             "invoice_company_set", "invoice_customer_set", "invoice_customer_remove",
-            "invoice_new", "invoice_edit", "invoice_discard", "invoice_finalize",
-            "invoice_import_legacy"})
+            "invoice_new", "invoice_edit", "invoice_discard", "invoice_finalize"})
 
     def test_mcp_json_points_at_server(self):
         mcp = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))

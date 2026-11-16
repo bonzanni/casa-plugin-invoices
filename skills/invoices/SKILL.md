@@ -37,9 +37,6 @@ Customers: `invoice_customer_set` with an id slug (e.g. `acme`) and the details,
 including the email recipients (to, cc, bcc). If a customer's VAT rate is 0, ask
 for a `vat_note` to print on the invoice (e.g. "VAT reverse-charged").
 
-Coming from lesina-invoice: `invoice_import_legacy` imports the company, the
-customer and the issued invoices once. Show the operator the runbook in its result.
-
 ## Making an invoice
 
 "Invoice X" means `invoice_new` for that customer. By default it copies the lines of
@@ -104,13 +101,12 @@ Don't send email yourself, even if a Gmail tool is available to you.
 
 `invoice_package` publishes a finalized invoice's PDF again and returns the same
 package, e.g. when the handoff copy has expired (after 7 days) or the email was
-never sent. Invoices imported from lesina-invoice cannot be re-issued; their
+never sent. Invoices issued by lesina-invoice cannot be re-issued; their
 original PDF is in Gmail's Sent folder.
 
 ## Protected tools
 
-`invoice_finalize`, `invoice_discard`, `invoice_customer_remove` and
-`invoice_import_legacy` make Casa show the operator an approval button. Call them
-directly when the operator asked for the action; don't ask for a second
-confirmation in chat. If a call is refused as pending approval, end your turn and
+`invoice_finalize`, `invoice_discard` and `invoice_customer_remove` make Casa show
+the operator an approval button. Call them directly when the operator asked for the
+action; don't ask for a second confirmation in chat. If a call is refused as pending approval, end your turn and
 wait.

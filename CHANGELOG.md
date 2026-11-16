@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — 2026-11-16
+
+Casa floor: v0.326.0 (unchanged).
+
+- The one-time import from `lesina-invoice` is removed from the plugin: the
+  `invoice_import_legacy` tool, its approval entry and its README section are gone.
+  The plugin now has 14 tools.
+
 ## 0.1.0 — 2026-11-16
 
 Casa floor: v0.326.0 (plugin file handoff). The send step needs the Gmail plugin

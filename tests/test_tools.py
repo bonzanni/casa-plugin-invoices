@@ -1,5 +1,5 @@
 # tests/test_tools.py
-"""The 15 tools through the JSON-RPC dispatcher, on a temp data dir."""
+"""The 14 tools through the JSON-RPC dispatcher, on a temp data dir."""
 import json
 import os
 import pathlib
@@ -251,7 +251,7 @@ class TestErrors(ToolsTestBase):
         out = [json.loads(line) for line in proc.stdout.splitlines()]
         self.assertEqual([r["id"] for r in out], [7, 8], out)
         self.assertEqual(out[0]["error"]["code"], -32603)
-        self.assertEqual(len(out[1]["result"]["tools"]), 15)
+        self.assertEqual(len(out[1]["result"]["tools"]), 14)
 
     def test_read_tools_skip_a_record_deleted_while_listing(self):
         self.setup_company()
@@ -268,7 +268,7 @@ class TestErrors(ToolsTestBase):
     def test_tools_list(self):
         resp = invoices_server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         listed = resp["result"]["tools"]
-        self.assertEqual(len(listed), 15)
+        self.assertEqual(len(listed), 14)
         for t in listed:
             self.assertEqual(t["inputSchema"]["type"], "object", t["name"])
             self.assertTrue(t["description"], t["name"])
@@ -503,15 +503,31 @@ class TestDrafts(ToolsTestBase):
                                           {"invoice_number": "INV-2026-0011"}))
 
 
-class TestImport(ToolsTestBase):
-    def test_import_legacy_then_next_number(self):
-        legacy_dir = os.path.join(self.tmp, "lesina-invoice-inline")
-        shutil.copytree(ROOT / "tests" / "fixtures" / "legacy", legacy_dir)
-        out = self.ok_json("invoice_import_legacy", {"path": legacy_dir})
-        self.assertEqual(out["customer"], "acme")
-        self.assertIn("runbook", out)
-        self.fails("invoice_import_legacy", {"path": legacy_dir})   # already imported
-        self.assertTrue(self.ok_json("invoice_list")["invoices"])
+class TestLikeLastTimeAfterSetup(ToolsTestBase):
+    def test_floor_then_like_last_time_continues_the_series(self):
+        # an existing series taken over at setup, then "like last time" from the first
+        # invoice issued here: lines copied, period advanced, numbering continues
+        out = self.setup_company(last_invoice_number="INV-2026-0011")
+        self.assertEqual(out["company"]["numbering"]["next_seq"], 12)
+        self.setup_customer()
+        draft, ref = self.new(**{"from": "none"}, items=ITEMS, period="2026-11",
+                              invoice_date="2026-11-28")
+        self.assertEqual(self.finalize(draft, ref)["invoice_number"], "INV-2026-0012")
+
+        summary = self.ok("invoice_new", {"customer": "acme", "invoice_date": "2026-12-03"})
+        self.assertIn("Copied from: INV-2026-0012", summary)
+        self.assertIn("December 2026", summary)
+        draft2, ref2 = self.draft_and_ref(summary)
+        pkg = self.finalize(draft2, ref2)
+        self.assertEqual(pkg["invoice_number"], "INV-2026-0013")
+        self.assertEqual(pkg["total"], "10596.99")
+        self.assertEqual(pkg["email"]["to"], "ap@example.com")
+        first = self.ok_json("invoice_get", {"id": "INV-2026-0012"})
+        second = self.ok_json("invoice_get", {"id": "INV-2026-0013"})
+        self.assertEqual(second["period"], "2026-12")
+        self.assertEqual(second["line_items"], first["line_items"])
+        listed = [r["invoice_number"] for r in self.ok_json("invoice_list")["invoices"]]
+        self.assertEqual(sorted(listed), ["INV-2026-0012", "INV-2026-0013"])
 
 
 if __name__ == "__main__":
