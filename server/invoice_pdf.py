@@ -44,6 +44,7 @@ QTY_W = 45                                   # room the default layout gives the
 COL_GAP = 12                                 # least space between two number columns
 DESC_GAP = 8                                 # least space between description and QTY
 HEADER_H = 24
+MIN_LABEL_W = 40                             # totals: label room an amount never takes
 
 
 class _Layout:
@@ -266,8 +267,15 @@ class _Layout:
         note = self.customer.get("vat_note") if model.rate_bp(c["vat_rate"]) == 0 else None
         note = note or f"All amounts are exclusive of {rate}% {tax}"
         note_lines = pdf.wrap(note, "F1", 7, CONTENT_W - 24)
+        label_x = LEFT + CONTENT_W * 0.55
+        t = c["totals"]
+        rows = [self._total_row(label_x, *r) for r in (
+            (f"Subtotal excl. {tax}:", t["subtotal"], "F1", 9, TEXT_MUTED),
+            (f"{tax} {rate}%:", t["vat"], "F1", 9, TEXT_MUTED),
+            ("Total:", t["total"], "F2", 13, PRIMARY))]
+        extra = sum(r[-1] for r in rows)        # height of wrapped label lines
         # VAT note + totals stay together, so a page break cannot split them
-        self.ensure_space(6 + 9 * (len(note_lines) - 1) + 12 + 16 + 18 + 14 + 16 + 30)
+        self.ensure_space(6 + 9 * (len(note_lines) - 1) + 12 + 16 + 18 + 14 + 16 + 30 + extra)
         self.y += 6
         for n, line in enumerate(note_lines):
             self.text(LEFT + 12, self.y + 9 * n, line, size=7, color=TEXT_MUTED)
@@ -275,27 +283,34 @@ class _Layout:
         self.doc.line(LEFT + CONTENT_W * 0.5, self.y, RIGHT, self.y, 0.5, BORDER)
         self.y += 16
 
-        label_x = LEFT + CONTENT_W * 0.55
-        t = c["totals"]
-
-        def row(label, minor, font, size, color):
-            """label at label_x, amount right-aligned on the same baseline; a
-            very long amount shrinks rather than run into its label."""
-            amount = self.money(minor)
-            room = COL_AMOUNT_R - label_x - pdf.text_width(label, font, size) - 12
-            fit = min(size, size * room / pdf.text_width(amount, font, size))
-            self.text(label_x, self.y, label, font, size, color)
+        def draw(row):
+            lines, step, font, size, color, amount, fit, extra = row
+            for n, line in enumerate(lines):
+                self.text(label_x, self.y + step * n, line, font, size, color)
             self.right(COL_AMOUNT_R, self.y + (size - fit) * pdf.ASCENT, amount, font, fit,
                        PRIMARY if font == "F2" else TEXT_DARK)
+            self.y += extra
 
-        row(f"Subtotal excl. {tax}:", t["subtotal"], "F1", 9, TEXT_MUTED)
+        draw(rows[0])
         self.y += 18
-        row(f"{tax} {rate}%:", t["vat"], "F1", 9, TEXT_MUTED)
+        draw(rows[1])
         self.y += 14
         self.doc.line(label_x, self.y, RIGHT, self.y, 1.5, PRIMARY)
         self.y += 16
-        row("Total:", t["total"], "F2", 13, PRIMARY)
+        draw(rows[2])
         self.y += 28
+
+    def _total_row(self, label_x, label, minor, font, size, color):
+        """A totals row: the amount right-aligned at full size, the label
+        wrapped into the room left of it. Only an amount wider than the room
+        minus MIN_LABEL_W shrinks, so it never gets a size near zero."""
+        amount = self.money(minor)
+        room = COL_AMOUNT_R - label_x - 12
+        width = pdf.text_width(amount, font, size)
+        fit = min(size, size * (room - MIN_LABEL_W) / width)
+        lines = pdf.wrap(label, font, size, room - width * fit / size)
+        step = size + 2
+        return lines, step, font, size, color, amount, fit, step * (len(lines) - 1)
 
     def notes(self):
         notes = self.c.get("notes")

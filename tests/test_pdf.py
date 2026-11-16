@@ -316,6 +316,25 @@ class TestInvoicePdf(unittest.TestCase):
                      and t["font"] == "F2")
         self.assertLess(total["size"], 13)                 # the total shrank to fit
 
+    def test_long_tax_name_wraps_and_amounts_stay_full_size(self):
+        global COMPANY
+        saved = COMPANY
+        try:
+            COMPANY = model.validate_company({**saved, "tax_name": "Belasting toegevoegde waarde " * 3})
+            data = invoice_pdf.render_invoice(_content(), "INV-1", draft=False)
+        finally:
+            COMPANY = saved
+        self._assert_no_overlap(data)
+        texts = pdfparse.texts(data)
+        for amount in ("€ 8.757,84", "€ 1.839,15"):
+            self.assertEqual(next(t for t in texts if t["text"] == amount)["size"], 9)
+        right = invoice_pdf.COL_AMOUNT_R - pdf.text_width("€ 8.757,84", "F1", 9) - 12
+        labels = [t for t in texts if t["x"] == round(invoice_pdf.LEFT + invoice_pdf.CONTENT_W
+                                                      * 0.55, 3) and t["size"] == 9]
+        self.assertGreater(len(labels), 3)                  # labels wrapped
+        for t in labels:
+            self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F1", 9), right + 0.01)
+
     def test_lines_and_totals_must_pair(self):
         content = _content()
         content["totals"]["lines"].pop()
