@@ -1,0 +1,60 @@
+{
+  "invoice_number": "INV-2026-0012",
+  "invoice_date": "2026-12-01",
+  "due_date": "2026-12-16",
+  "service_period": "December 2026",
+  "payment_terms_days": 15,
+  "line_items": [
+    {
+      "id": "mgmt_fee",
+      "description": "Management fee",
+      "detail": "",
+      "qty": 1,
+      "unit_price": "8400.00"
+    },
+    {
+      "id": "travel",
+      "description": "Travel expenses",
+      "detail": "",
+      "qty": 1,
+      "unit_price": "300.00"
+    },
+    {
+      "id": "tool_a",
+      "description": "Management expenses",
+      "detail": "Network subscription",
+      "qty": 1,
+      "unit_price": "57.84"
+    },
+    {
+      "id": "tool_b",
+      "description": "Management expenses",
+      "detail": "Social subscription",
+      "qty": 1,
+      "unit_price": "8.00"
+    },
+    {
+      "id": "tool_c",
+      "description": "Management expenses",
+      "detail": "Assistant plan",
+      "qty": 1,
+      "unit_price": "180.00"
+    },
+    {
+      "id": "card",
+      "description": "Management expenses",
+      "detail": "Card membership",
+      "qty": 1,
+      "unit_price": "65.00"
+    },
+    {
+      "id": "tool_d",
+      "description": "Management expenses",
+      "detail": "Model API plan",
+      "qty": 1,
+      "unit_price": "229.00"
+    }
+  ],
+  "submitted": false,
+  "submit_state": "idle"
+}

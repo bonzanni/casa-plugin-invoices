@@ -1,0 +1,87 @@
+{
+  "name": "invoices",
+  "version": "0.1.0",
+  "description": "Invoicing for Casa: your company and customers, invoice drafts reused from the previous invoice, numbered finalized invoices with an in-process PDF, published to Casa's handoff folder with a filled email ready to send.",
+  "author": {
+    "name": "Nicola Bonzanni"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/bonzanni/casa-plugin-invoices",
+  "keywords": [
+    "invoices",
+    "invoicing",
+    "billing",
+    "pdf",
+    "casa"
+  ],
+  "casa": {
+    "protectedTools": [
+      {
+        "name": "invoice_finalize",
+        "summary": "Finalize the invoice for {customer} (draft {draft_id}): assigns the next invoice number"
+      },
+      {
+        "name": "invoice_discard",
+        "summary": "Delete invoice draft {draft_id}"
+      },
+      {
+        "name": "invoice_customer_remove",
+        "summary": "Remove customer {customer}"
+      },
+      {
+        "name": "invoice_import_legacy",
+        "summary": "Import company, customer and invoices from lesina-invoice"
+      }
+    ],
+    "resultContract": {
+      "version": 1,
+      "tools": {
+        "invoice_company_get": {
+          "result": "safe"
+        },
+        "invoice_company_set": {
+          "result": "safe"
+        },
+        "invoice_customer_get": {
+          "result": "safe"
+        },
+        "invoice_customer_list": {
+          "result": "safe"
+        },
+        "invoice_customer_remove": {
+          "result": "safe"
+        },
+        "invoice_customer_set": {
+          "result": "safe"
+        },
+        "invoice_discard": {
+          "result": "safe"
+        },
+        "invoice_edit": {
+          "result": "safe"
+        },
+        "invoice_finalize": {
+          "result": "safe"
+        },
+        "invoice_get": {
+          "result": "safe"
+        },
+        "invoice_import_legacy": {
+          "result": "safe"
+        },
+        "invoice_list": {
+          "result": "safe"
+        },
+        "invoice_new": {
+          "result": "safe"
+        },
+        "invoice_package": {
+          "result": "safe"
+        },
+        "invoice_preview": {
+          "result": "safe"
+        }
+      }
+    }
+  }
+}
