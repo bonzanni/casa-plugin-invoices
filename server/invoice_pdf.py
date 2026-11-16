@@ -37,11 +37,14 @@ DRAFT_GREY = (0.6, 0.6, 0.6)
 COL2_X = LEFT + 269                          # meta block / customer ids
 META_VAL_X = COL2_X + 108
 COL_DESC_L = LEFT + 12
-COL_QTY_R = LEFT + 284
-COL_PRICE_R = LEFT + 369
+COL_QTY_R = LEFT + 284                       # default right edges; moved left when
+COL_PRICE_R = LEFT + 369                     # the numbers of an invoice need the room
 COL_AMOUNT_R = RIGHT - 12
-DESC_W = COL_QTY_R - 45 - COL_DESC_L - 8     # description column, clear of QTY
+QTY_W = 45                                   # room the default layout gives the QTY text
+COL_GAP = 12                                 # least space between two number columns
+DESC_GAP = 8                                 # least space between description and QTY
 HEADER_H = 24
+MIN_LABEL_W = 40                             # totals: label room an amount never takes
 
 
 class _Layout:
@@ -58,6 +61,7 @@ class _Layout:
             "Subject": f"Invoice {number} - {self.company['name']} to {self.customer['name']}",
         })
         self.y = MARGIN_T
+        self.cols = (COL_QTY_R, COL_PRICE_R, COL_QTY_R - QTY_W - DESC_GAP - COL_DESC_L)
         self._start_page()
 
     # ---------------------------------------------------------------- helpers
@@ -89,6 +93,19 @@ class _Layout:
             x = pdf.PAGE_W / 2 - w / 2 * 0.7071 + cap / 2 * 0.7071
             y = pdf.PAGE_H / 2 + w / 2 * 0.7071 + cap / 2 * 0.7071
             d.rotated_text(x, y, "DRAFT", angle, size, DRAFT_GREY, opacity=0.18)
+
+    def page_labels(self):
+        """\"Invoice <number> · Page i of n\" under the footer, once the page count is known."""
+        n = len(self.doc.pages)
+        if n < 2:
+            return
+        what = "Draft invoice" if self.draft else f"Invoice {self.number}"
+        for i in range(n):
+            label = f"{what}  ·  Page {i + 1} of {n}"
+            size = min(7, 7 * CONTENT_W / pdf.text_width(label, "F2", 7))   # as the footer
+            self.doc.select_page(i)
+            self.doc.text_center(LEFT + CONTENT_W / 2, FOOTER_Y + 22, label, "F2", size,
+                                 TEXT_MUTED)
 
     def new_page(self):
         self._finish_page()
@@ -124,7 +141,8 @@ class _Layout:
     def header(self):
         name, y = self.company["name"], self.y
         size = 22
-        while size > 12 and pdf.text_width(name, "F2", size) > CONTENT_W - 130:
+        room = CONTENT_W - max(130, pdf.text_width(self.number, "F2", 14) + 16)
+        while size > 12 and pdf.text_width(name, "F2", size) > room:
             size -= 1
         self.text(LEFT, y, name, "F2", size, PRIMARY)
         self.right(RIGHT, y + 2, "INVOICE", "F1", 10, TEXT_MUTED)
@@ -193,23 +211,41 @@ class _Layout:
                 iy += 12
         self.y += box_h + 12
 
+    def columns(self, rows: list[tuple[str, str, str]]):
+        """(qty right edge, price right edge, description width) for these
+        (qty, price, amount) texts: the default layout when they fit, else the
+        number columns move left and the description narrows. At the largest
+        values validation allows (qty 9999.999999, a 13-digit price) the
+        description keeps about 125pt."""
+        w = [max([pdf.text_width(head, "F2", 8)] + [pdf.text_width(r[k], "F1", 9) for r in rows])
+             for k, head in enumerate(("QTY", "UNIT PRICE", "AMOUNT"))]
+        price_r = min(COL_PRICE_R, COL_AMOUNT_R - w[2] - COL_GAP)
+        qty_r = min(COL_QTY_R, price_r - w[1] - COL_GAP)
+        return qty_r, price_r, qty_r - max(QTY_W, w[0]) - DESC_GAP - COL_DESC_L
+
     def table_header(self):
+        qty_r, price_r = self.cols[:2]
         y = self.y
         self.doc.rect(LEFT, y, CONTENT_W, HEADER_H, fill=PRIMARY, radius=2)
         ty = y + 8
         self.text(COL_DESC_L, ty, "DESCRIPTION", "F2", 8, WHITE)
-        self.right(COL_QTY_R, ty, "QTY", "F2", 8, WHITE)
-        self.right(COL_PRICE_R, ty, "UNIT PRICE", "F2", 8, WHITE)
+        self.right(qty_r, ty, "QTY", "F2", 8, WHITE)
+        self.right(price_r, ty, "UNIT PRICE", "F2", 8, WHITE)
         self.right(COL_AMOUNT_R, ty, "AMOUNT", "F2", 8, WHITE)
         self.y += HEADER_H + 4
 
     def items(self):
         currency = self.company["currency"]
+        pairs = list(zip(self.c["line_items"], self.c["totals"]["lines"], strict=True))
+        rows = [(self.decimal(item["qty"]),
+                 self.money(money.to_minor(item["unit_price"], currency)),
+                 self.money(line_minor)) for item, line_minor in pairs]
+        self.cols = self.columns(rows)
+        qty_r, price_r, desc_w = self.cols
         self.table_header()
-        for i, (item, line_minor) in enumerate(zip(self.c["line_items"],
-                                                   self.c["totals"]["lines"], strict=True)):
-            desc = pdf.wrap(item["description"], "F2", 9, DESC_W)
-            detail = pdf.wrap(item["detail"], "F1", 8, DESC_W) if item.get("detail") else []
+        for i, ((item, _), (qty, price, amount)) in enumerate(zip(pairs, rows)):
+            desc = pdf.wrap(item["description"], "F2", 9, desc_w)
+            detail = pdf.wrap(item["detail"], "F1", 8, desc_w) if item.get("detail") else []
             last_desc = 8 + 11 * (len(desc) - 1)
             row_h = (last_desc + 14 + 10 * (len(detail) - 1) + 14) if detail else last_desc + 20
             if self.ensure_space(row_h):
@@ -223,9 +259,9 @@ class _Layout:
             for n, line in enumerate(detail):
                 self.text(COL_DESC_L, ty + last_desc - 8 + 14 + 10 * n, line, size=8,
                           color=TEXT_MUTED)
-            self.right(COL_QTY_R, ty, self.decimal(item["qty"]))
-            self.right(COL_PRICE_R, ty, self.money(money.to_minor(item["unit_price"], currency)))
-            self.right(COL_AMOUNT_R, ty, self.money(line_minor))
+            self.right(qty_r, ty, qty)
+            self.right(price_r, ty, price)
+            self.right(COL_AMOUNT_R, ty, amount)
             self.y += row_h
 
     def totals(self):
@@ -234,8 +270,15 @@ class _Layout:
         note = self.customer.get("vat_note") if model.rate_bp(c["vat_rate"]) == 0 else None
         note = note or f"All amounts are exclusive of {rate}% {tax}"
         note_lines = pdf.wrap(note, "F1", 7, CONTENT_W - 24)
+        label_x = LEFT + CONTENT_W * 0.55
+        t = c["totals"]
+        rows = [self._total_row(label_x, *r) for r in (
+            (f"Subtotal excl. {tax}:", t["subtotal"], "F1", 9, TEXT_MUTED),
+            (f"{tax} {rate}%:", t["vat"], "F1", 9, TEXT_MUTED),
+            ("Total:", t["total"], "F2", 13, PRIMARY))]
+        extra = sum(r[-1] for r in rows)        # height of wrapped label lines
         # VAT note + totals stay together, so a page break cannot split them
-        self.ensure_space(6 + 9 * (len(note_lines) - 1) + 12 + 16 + 18 + 10 + 16 + 30)
+        self.ensure_space(6 + 9 * (len(note_lines) - 1) + 12 + 16 + 18 + 14 + 16 + 30 + extra)
         self.y += 6
         for n, line in enumerate(note_lines):
             self.text(LEFT + 12, self.y + 9 * n, line, size=7, color=TEXT_MUTED)
@@ -243,19 +286,34 @@ class _Layout:
         self.doc.line(LEFT + CONTENT_W * 0.5, self.y, RIGHT, self.y, 0.5, BORDER)
         self.y += 16
 
-        label_x = LEFT + CONTENT_W * 0.55
-        t = c["totals"]
-        self.text(label_x, self.y, f"Subtotal excl. {tax}:", color=TEXT_MUTED)
-        self.right(COL_AMOUNT_R, self.y, self.money(t["subtotal"]))
+        def draw(row):
+            lines, step, font, size, color, amount, fit, extra = row
+            for n, line in enumerate(lines):
+                self.text(label_x, self.y + step * n, line, font, size, color)
+            self.right(COL_AMOUNT_R, self.y + (size - fit) * pdf.ASCENT, amount, font, fit,
+                       PRIMARY if font == "F2" else TEXT_DARK)
+            self.y += extra
+
+        draw(rows[0])
         self.y += 18
-        self.text(label_x, self.y, f"{tax} {rate}%:", color=TEXT_MUTED)
-        self.right(COL_AMOUNT_R, self.y, self.money(t["vat"]))
-        self.y += 10
+        draw(rows[1])
+        self.y += 14
         self.doc.line(label_x, self.y, RIGHT, self.y, 1.5, PRIMARY)
         self.y += 16
-        self.text(label_x, self.y, "Total:", "F2", 13, PRIMARY)
-        self.right(COL_AMOUNT_R, self.y, self.money(t["total"]), "F2", 13, PRIMARY)
+        draw(rows[2])
         self.y += 28
+
+    def _total_row(self, label_x, label, minor, font, size, color):
+        """A totals row: the amount right-aligned at full size, the label
+        wrapped into the room left of it. Only an amount wider than the room
+        minus MIN_LABEL_W shrinks, so it never gets a size near zero."""
+        amount = self.money(minor)
+        room = COL_AMOUNT_R - label_x - 12
+        width = pdf.text_width(amount, font, size)
+        fit = min(size, size * (room - MIN_LABEL_W) / width)
+        lines = pdf.wrap(label, font, size, room - width * fit / size)
+        step = size + 2
+        return lines, step, font, size, color, amount, fit, step * (len(lines) - 1)
 
     def notes(self):
         notes = self.c.get("notes")
@@ -301,4 +359,5 @@ def render_invoice(content: dict, invoice_number: str | None, *, draft: bool) ->
     layout.notes()
     layout.payment()
     layout._finish_page()
+    layout.page_labels()
     return layout.doc.to_bytes()

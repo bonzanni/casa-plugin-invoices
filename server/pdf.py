@@ -125,14 +125,21 @@ class Document:
         self.pages: list[list[str]] = []
         self.info = dict(info or {})
         self._alphas: set[int] = set()             # opacities in percent, one ExtGState each
+        self._current = -1                         # the page drawing goes to
 
     def new_page(self) -> None:
         self.pages.append([])
+        self._current = len(self.pages) - 1
+
+    def select_page(self, index: int) -> None:
+        """Draw on an earlier page (e.g. "page i of n" once n is known)."""
+        self.pages[index]                          # IndexError for a page that does not exist
+        self._current = index
 
     def _ops(self) -> list[str]:
         if not self.pages:
             self.new_page()
-        return self.pages[-1]
+        return self.pages[self._current]
 
     # ---------------------------------------------------------------- text
 

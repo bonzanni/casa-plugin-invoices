@@ -12,6 +12,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import invoice  # noqa: E402
 import invoice_pdf  # noqa: E402
 import model  # noqa: E402
+import numbering  # noqa: E402
 import pdf  # noqa: E402
 import pdfparse  # noqa: E402
 
@@ -234,7 +235,10 @@ class TestInvoicePdf(unittest.TestCase):
         self.assertEqual({t["page"] for t in headers}, item_pages)   # header repeated
         separator_y = pdf.PAGE_H - (invoice_pdf.FOOTER_Y - 10)
         footer = [t for t in texts if t["y"] < separator_y]
-        self.assertEqual(len(footer), 2 * n)                # two footer lines per page
+        self.assertEqual(len(footer), 3 * n)                # two footer lines + page label
+        labels = [t["text"] for t in footer if "Page" in t["text"]]
+        self.assertEqual(labels, [f"Invoice INV-2026-0012  ·  Page {i} of {n}"
+                                  for i in range(1, n + 1)])
         self.assertTrue(all(t["size"] <= 7 for t in footer))
         for t in texts:
             if t not in footer:
@@ -257,6 +261,108 @@ class TestInvoicePdf(unittest.TestCase):
             self.assertLess(t["y"], pdf.PAGE_H, t)
         detail_lines = [t for t in texts if t["size"] == 8 and t["text"].startswith("W")]
         self.assertEqual(sum(len(t["text"]) for t in detail_lines), 3 * model.MAX_DETAIL)
+
+    def test_single_page_has_no_page_label(self):
+        s = _strings(invoice_pdf.render_invoice(_content(), "INV-1", draft=False))
+        self.assertFalse(any("Page" in t for t in s))
+
+    def test_draft_page_label(self):
+        items = [{"description": f"Item {i}", "qty": "1", "unit_price": "1.00"} for i in range(50)]
+        data = invoice_pdf.render_invoice(_content(items), None, draft=True)
+        n = pdfparse.page_count(data)
+        self.assertGreaterEqual(n, 2)
+        labels = [t for t in _strings(data) if "Page" in t]
+        self.assertEqual(labels, [f"Draft invoice  ·  Page {i} of {n}" for i in range(1, n + 1)])
+
+    def test_vat_row_clears_the_rule_below(self):
+        texts = pdfparse.texts(invoice_pdf.render_invoice(_content(), "INV-1", draft=False))
+        vat = next(t for t in texts if t["text"] == "BTW 21%:")
+        total = next(t for t in texts if t["text"] == "Total:")
+        # descender (~0.21 em) to the 1.5pt rule: at least 4pt of air
+        self.assertGreater(vat["y"] - 0.21 * 9 - (total["y"] + 0.718 * 13 + 16), 4)
+
+    def _assert_no_overlap(self, data):
+        """No two texts on one baseline overlap horizontally."""
+        texts = pdfparse.texts(data)
+        for a in texts:
+            for b in texts:
+                if a is b or a["page"] != b["page"] or abs(a["y"] - b["y"]) > a["size"]:
+                    continue
+                if a["x"] < b["x"]:
+                    end = a["x"] + pdf.text_width(a["text"], a["font"], a["size"])
+                    self.assertLess(end + 4, b["x"], (a["text"], b["text"]))
+
+    def test_default_columns_unchanged_for_ordinary_numbers(self):
+        texts = pdfparse.texts(invoice_pdf.render_invoice(_content(), "INV-1", draft=False))
+        qty = next(t for t in texts if t["text"] == "QTY")
+        self.assertAlmostEqual(qty["x"] + pdf.text_width("QTY", "F2", 8),
+                               invoice_pdf.COL_QTY_R, places=2)
+
+    def test_large_numbers_do_not_overlap(self):
+        items = [
+            {"description": "Six-digit price", "qty": "1", "unit_price": "999999.99"},
+            {"description": "Max qty", "qty": "10000", "unit_price": "999999.99"},
+            {"description": "Fractional qty " * 5, "qty": "9999.999999", "unit_price": "123456.78"},
+        ]
+        self._assert_no_overlap(invoice_pdf.render_invoice(_content(items), "INV-1", draft=False))
+
+    def test_largest_valid_numbers_do_not_overlap(self):
+        items = ([{"description": "Largest " * 25, "qty": "10000",
+                   "unit_price": "9999999999999.99"}] * 49        # 50 lines: widest total
+                 + [{"description": "Discount", "qty": "9999.999999",
+                     "unit_price": "-9999999999999.99"}])
+        data = invoice_pdf.render_invoice(_content(items), "INV-1", draft=False)
+        self._assert_no_overlap(data)
+        total = next(t for t in pdfparse.texts(data) if t["text"].startswith("€ ")
+                     and t["font"] == "F2")
+        self.assertLess(total["size"], 13)                 # the total shrank to fit
+
+    def test_long_tax_name_wraps_and_amounts_stay_full_size(self):
+        global COMPANY
+        saved = COMPANY
+        try:
+            COMPANY = model.validate_company({**saved, "tax_name": "Belasting toegevoegde waarde"})
+            data = invoice_pdf.render_invoice(_content(), "INV-1", draft=False)
+        finally:
+            COMPANY = saved
+        self._assert_no_overlap(data)
+        texts = pdfparse.texts(data)
+        for amount in ("€ 8.757,84", "€ 1.839,15"):
+            self.assertEqual(next(t for t in texts if t["text"] == amount)["size"], 9)
+        right = invoice_pdf.COL_AMOUNT_R - pdf.text_width("€ 8.757,84", "F1", 9) - 12
+        labels = [t for t in texts if t["x"] == round(invoice_pdf.LEFT + invoice_pdf.CONTENT_W
+                                                      * 0.55, 3) and t["size"] == 9]
+        self.assertGreater(len(labels), 2)                  # labels wrapped
+        for t in labels:
+            self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F1", 9), right + 0.01)
+
+    def test_tax_name_length_capped(self):
+        model.check_new_tax_name("X" * model.MAX_TAX_NAME)
+        with self.assertRaises(model.ValidationError):
+            model.check_new_tax_name("X" * (model.MAX_TAX_NAME + 1))
+        # a longer one stored before the limit still validates (other edits keep working)
+        model.validate_company({**COMPANY, "tax_name": "X" * (model.MAX_TAX_NAME + 1)})
+
+    def test_page_label_fits_the_longest_invoice_number(self):
+        pattern = "X" * numbering.MAX_LITERAL + "{YYYY}{seq:9}"
+        numbering.check_new_pattern_length(pattern)
+        with self.assertRaises(model.ValidationError):
+            numbering.check_new_pattern_length("X" + pattern)
+        # a longer pattern stored before the limit still issues
+        self.assertEqual(numbering.next_number("X" + pattern, 2026, [],
+                                               {"next_seq": 1, "seq_year": None})[1], 1)
+        number = numbering.render(pattern, 2026, 1)
+        items = [{"description": f"Item {i}", "qty": "1", "unit_price": "1.00"} for i in range(50)]
+        texts = pdfparse.texts(invoice_pdf.render_invoice(_content(items), number, draft=False))
+        name = next(t for t in texts if t["text"] == COMPANY["name"])
+        num = next(t for t in texts if t["text"] == number)
+        self.assertLess(name["x"] + pdf.text_width(name["text"], "F2", name["size"]) + 8,
+                        num["x"])                         # header: name clear of the number
+        labels = [t for t in texts if "Page" in t["text"]]
+        self.assertGreaterEqual(len(labels), 2)
+        for t in labels:
+            self.assertEqual(t["size"], 7)                  # full size, no shrinking
+            self.assertLessEqual(t["x"] + pdf.text_width(t["text"], "F2", 7), invoice_pdf.RIGHT)
 
     def test_lines_and_totals_must_pair(self):
         content = _content()

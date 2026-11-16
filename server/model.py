@@ -34,6 +34,7 @@ MAX_LINE_ITEMS = 50
 MAX_QTY = 10000
 MAX_DESCRIPTION = 200          # characters; keeps one item row shorter than a PDF page
 MAX_DETAIL = 1000
+MAX_TAX_NAME = 30              # characters; the totals block must fit on one page
 MAX_PAYMENT_TERMS_DAYS = 365
 
 _MONTHS = ("January", "February", "March", "April", "May", "June", "July",
@@ -152,6 +153,13 @@ def merge_company(current: dict | None, patch: dict) -> dict:
     for k, v in COMPANY_DEFAULTS.items():
         c.setdefault(k, copy.deepcopy(v))
     return validate_company(c)
+
+
+def check_new_tax_name(value) -> None:
+    """For a tax_name being set: at most MAX_TAX_NAME characters. Only checked
+    on set, so a longer one stored before the limit does not block other edits."""
+    if isinstance(value, str) and len(value.strip()) > MAX_TAX_NAME:
+        raise ValidationError(f"tax_name: at most {MAX_TAX_NAME} characters, e.g. VAT, BTW, MwSt")
 
 
 def validate_company(c: dict) -> dict:
