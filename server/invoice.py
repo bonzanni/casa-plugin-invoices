@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import secrets
 
 import model
@@ -18,8 +19,6 @@ DRAFT_ID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 DRAFT_ID_LEN = 4
 ITEM_FIELDS = ("unit_price", "qty", "description", "detail")
 SET_FIELDS = ("invoice_date", "period", "notes", "vat_rate")
-LABEL_WIDTH = 22
-AMOUNT_WIDTH = 14
 
 _OP_KEYS = {
     "change_item": {"op", "id", "field", "value"},
@@ -261,17 +260,22 @@ def compute_ref(content: dict) -> str:
 
 # ---------------------------------------------------------------- summary
 
-def _qty_row(qty: str, unit_price: str, amount: str) -> str:
-    """`    {qty} × {unit price}` with the line amount right-aligned."""
-    left = f"    {qty} × {unit_price}"
-    pad = max(1, LABEL_WIDTH + AMOUNT_WIDTH - len(left) - len(amount))
-    return left + " " * pad + amount
+# The summary is Markdown with a GitHub-flavoured table, which Casa shows on
+# Telegram as a rich message. Every value from the operator's data is escaped so
+# it shows as written and can never end a table cell or start formatting.
+# `_` is left alone (Casa sends it as an entity), and `&` only needs escaping
+# where it would start an HTML entity.
+_MD_SPECIAL = re.compile(r"[\\`*\[\]|<~=$]")
+_ENTITY_START = re.compile(r"&(?=#?[0-9A-Za-z]+;)")
 
 
-def _row(label: str, amount: str) -> str:
-    if len(label) > LABEL_WIDTH:
-        label = label[:LABEL_WIDTH - 1] + "…"
-    return f"{label:<{LABEL_WIDTH}}{amount:>{AMOUNT_WIDTH}}"
+def _md(text: str) -> str:
+    """`text` as literal Markdown: special characters backslash-escaped."""
+    return _ENTITY_START.sub("&amp;", _MD_SPECIAL.sub(lambda m: "\\" + m.group(0), text))
+
+
+def _table_row(*cells: str) -> str:
+    return "| " + " | ".join(cells) + " |"
 
 
 def render_summary(draft: dict, content: dict, ref: str) -> str:
@@ -280,9 +284,9 @@ def render_summary(draft: dict, content: dict, ref: str) -> str:
     t = content["totals"]
 
     def fmt_money(minor: int) -> str:
-        return model.format_money(minor, currency, locale)
+        return _md(model.format_money(minor, currency, locale))
 
-    title = f"**Draft {draft['draft_id']} — {content['customer']['name']}"
+    title = f"**Draft {draft['draft_id']} — {_md(content['customer']['name'])}"
     if content.get("period"):
         title += f" — {model.period_label(content['period'])}"
     days = (model.parse_date(content["due_date"])
@@ -294,23 +298,26 @@ def render_summary(draft: dict, content: dict, ref: str) -> str:
         f" ({days} day{'' if days == 1 else 's'})",
     ]
     if content.get("source_invoice"):
-        out.append(f"Copied from: {content['source_invoice']}")
+        out.append(f"Copied from: {_md(content['source_invoice'])}")
     if content.get("notes"):
-        out.append(f"Notes: {content['notes']}")
-    out.append("```")
+        out.append(f"Notes: {_md(content['notes'])}")
+    out += ["", _table_row("Item", "Qty", "Unit price", "Amount"), "|:---|---:|---:|---:|"]
     for item, minor in zip(content["line_items"], t["lines"]):
-        out.append(f"{item['id']}  {item['description']}")
+        # A table cell holds one line; <br> is the line break inside it.
+        label = f"`{item['id']}` {_md(item['description'])}"
         if item.get("detail"):
-            out.append(f"    {item['detail']}")
+            label += f"<br>{_md(item['detail'])}"
         qty = item["qty"].replace(".", model.decimal_sep(locale))
         unit = fmt_money(money.to_minor(item["unit_price"], currency))
-        out.append(_qty_row(qty, unit, fmt_money(minor)))
-    out.append("-" * (LABEL_WIDTH + AMOUNT_WIDTH))
-    out.append(_row("Subtotal", fmt_money(t["subtotal"])))
+        out.append(_table_row(label, qty, unit, fmt_money(minor)))
     rate = model.canonical_rate(content["vat_rate"])
-    out.append(_row(f"{company['tax_name']} {rate}%", fmt_money(t["vat"])))
-    out.append("```")
-    out.append(f"**Total: {fmt_money(t['total'])}**")
-    out.append(f"Draft: {draft['draft_id']}")
-    out.append(f"Ref: {ref}")
+    out += [
+        _table_row("Subtotal", "", "", fmt_money(t["subtotal"])),
+        _table_row(f"{_md(company['tax_name'])} {rate}%", "", "", fmt_money(t["vat"])),
+        _table_row("**Total**", "", "", f"**{fmt_money(t['total'])}**"),
+        "",
+        f"**Total: {fmt_money(t['total'])}**",
+        f"Draft: {draft['draft_id']}",
+        f"Ref: {ref}",
+    ]
     return "\n".join(out)
