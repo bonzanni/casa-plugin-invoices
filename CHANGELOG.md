@@ -2,8 +2,10 @@
 
 ## 0.3.0 — 2026-11-18
 
-Casa floor: v0.326.0 (unchanged). The summary reads best on Casa v0.376.0 or later,
-which shows it on Telegram as a rich message with a real table.
+Casa floor: v0.376.1 (was v0.326.0). The summary is a table that Casa shows on
+Telegram as a rich message (v0.376.0), and it needs v0.376.1's line breaks for the
+lines around the table and for a line's detail, which older releases show as a
+literal `<br>`. Not backward compatible with older Casa.
 
 - The draft summary shows its lines as a table (Item, Qty, Unit price, Amount, the
   amounts right-aligned) with Subtotal, VAT and a bold Total as its last rows, instead
