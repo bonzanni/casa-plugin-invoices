@@ -1,6 +1,6 @@
 {
   "name": "invoices",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Invoicing for Casa: your company and customers, invoice drafts reused from the previous invoice, numbered finalized invoices with an in-process PDF, published to Casa's handoff folder with a filled email ready to send.",
   "author": {
     "name": "Nicola Bonzanni"

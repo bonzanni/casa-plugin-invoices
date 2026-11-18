@@ -33,10 +33,13 @@ currencies, per-line VAT rates, more than one sender company.
 
 ## Requirements
 
-- **Casa v0.326.0 or later**, the release that added the plugin file handoff
-  (`/data/handoff`, where finalized PDFs are published). Plugin media
-  (`/data/plugin-outbox`, used for draft previews) predates it, so v0.326.0 covers
-  both. Casa runs the server with its own `python3` (3.11).
+- **Casa v0.376.1 or later**. The draft summary is a Markdown table that Casa shows
+  on Telegram as a rich message: v0.376.0 added rich messages, and v0.376.1 keeps
+  single line breaks, so the lines around the table and a line's detail under its
+  description (a `<br>` in the cell) display as intended. Older releases show the
+  `<br>` literally. The plugin file handoff (`/data/handoff`, where finalized PDFs are
+  published) and plugin media (`/data/plugin-outbox`, used for draft previews) came
+  earlier, in v0.326.0. Casa runs the server with its own `python3` (3.11).
 - **The Gmail plugin (`casa-plugin-gmail`) 0.14.0 or later** for the send step:
   `send_email` with `cc` and `bcc`. The invoice email's `from_address` works when it is
   a send-as alias of the Gmail account; otherwise the email is sent from the account's

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0 — 2026-11-18
+
+Casa floor: v0.376.1 (was v0.326.0). The summary is a table that Casa shows on
+Telegram as a rich message (v0.376.0), and it needs v0.376.1's line breaks for the
+lines around the table and for a line's detail, which older releases show as a
+literal `<br>`. Not backward compatible with older Casa.
+
+- The draft summary shows its lines as a table (Item, Qty, Unit price, Amount, the
+  amounts right-aligned) with Subtotal, VAT and a bold Total as its last rows, instead
+  of a fixed-width block in a code box. Descriptions are shown in full (they were cut
+  at 22 characters) and a line's detail sits under its description in the same cell.
+- Markdown characters in customer names, descriptions, details and notes are escaped,
+  so a `|` or `*` in a description shows as written and cannot break the table.
+- The skill tells the agent to show invoice, draft and customer lists, and a fetched
+  invoice's lines, as a narrow table with named columns.
+- The Ref is unchanged: it still covers the invoice content, not the summary text, so
+  approvals given on 0.2.x summaries match the same drafts.
+
 ## 0.2.1 — 2026-11-16
 
 Casa floor: v0.326.0 (unchanged).

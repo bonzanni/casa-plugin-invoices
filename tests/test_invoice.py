@@ -393,7 +393,37 @@ class TestRef(unittest.TestCase):
                              '{"a":[1,null],"b":"€"}'.encode("utf-8")).hexdigest()[:32])
 
 
+def _cells(row: str) -> list[str]:
+    """A GFM table row's cells: split on the pipes no backslash escapes."""
+    assert row.startswith("| ") and row.endswith(" |"), row
+    cells, cur, i = [], "", 1
+    while i < len(row) - 1:
+        if row[i] == "\\":
+            cur += row[i:i + 2]
+            i += 2
+            continue
+        if row[i] == "|":
+            cells.append(cur.strip())
+            cur = ""
+        else:
+            cur += row[i]
+        i += 1
+    cells.append(cur.strip())
+    return cells
+
+
 class TestSummary(unittest.TestCase):
+    def summary(self, edits=(), customer=CUSTOMER, company=COMPANY, items=ITEMS):
+        draft = _new(customer=customer, items=items, invoice_date="2026-11-30")
+        if edits:
+            draft = invoice.apply_edits(draft, list(edits), company, customer)
+        draft["draft_id"] = "AB23"
+        content = invoice.frozen_content(draft, company, customer, TEMPLATE)
+        return invoice.render_summary(draft, content, "f" * 32)
+
+    def table(self, text):
+        return [line for line in text.split("\n") if line.startswith("|")]
+
     def test_summary_layout(self):
         draft = _new(items=ITEMS, invoice_date="2026-11-30", period="2026-11",
                      source=_source())
@@ -404,61 +434,120 @@ class TestSummary(unittest.TestCase):
             "**Draft D7K2 — Acme Biotech B.V. — November 2026**\n"
             "Invoice date: 30-11-2026 · Due: 30-12-2026 (30 days)\n"
             "Copied from: INV-2026-0011\n"
-            "```\n"
-            "L1  Management fee\n"
-            "    Management services November 2026\n"
-            "    1 × € 8.400,00        € 8.400,00\n"
-            "L2  Travel expenses\n"
-            "    2 × € 178,92            € 357,84\n"
-            "------------------------------------\n"
-            "Subtotal                  € 8.757,84\n"
-            "BTW 21%                   € 1.839,15\n"
-            "```\n"
+            "\n"
+            "| Item | Qty | Unit price | Amount |\n"
+            "|:---|---:|---:|---:|\n"
+            "| `L1` Management fee<br>Management services November 2026 | 1 | € 8.400,00 "
+            "| € 8.400,00 |\n"
+            "| `L2` Travel expenses | 2 | € 178,92 | € 357,84 |\n"
+            "| Subtotal |  |  | € 8.757,84 |\n"
+            "| BTW 21% |  |  | € 1.839,15 |\n"
+            "| **Total** |  |  | **€ 10.596,99** |\n"
+            "\n"
             "**Total: € 10.596,99**\n"
             "Draft: D7K2\n"
             "Ref: 0123456789abcdef0123456789abcdef"
         )
         self.assertEqual(invoice.render_summary(draft, content, ref), expected)
 
-    def test_summary_rows_show_ids_full_text_qty_and_unit_price(self):
-        long = "Consulting on the quarterly regulatory submission package"
-        draft = _new(items=ITEMS, invoice_date="2026-11-30")
-        draft = invoice.apply_edits(draft, [
-            {"op": "remove_item", "id": "L1"},
-            {"op": "add_item", "item": {"description": long, "qty": "1.5",
-                                        "unit_price": "100.00"}}], COMPANY, CUSTOMER)
-        draft["draft_id"] = "AB23"
-        content = invoice.frozen_content(draft, COMPANY, CUSTOMER, TEMPLATE)
-        lines = invoice.render_summary(draft, content, "f" * 32).split("\n")
-        start = lines.index("```") + 1
-        self.assertEqual(lines[start:start + 4], [
-            "L2  Travel expenses",
-            "    2 × € 178,92            € 357,84",
-            f"L1  {long}",
-            "    1,5 × € 100,00          € 150,00",
-        ])
+    def test_no_code_fence(self):
+        self.assertNotIn("```", self.summary())
 
-    def test_summary_without_period_or_source_shows_notes(self):
-        customer = {**CUSTOMER, "payment_terms_days": 1}
-        draft = _new(customer=customer, items=ITEMS[1:], invoice_date="2026-11-30")
-        draft = invoice.apply_edits(draft, [
-            {"op": "set", "field": "vat_rate", "value": "12.5"},
-            {"op": "set", "field": "notes", "value": "PO 4711"},
-            {"op": "change_item", "id": "L1", "field": "detail",
-             "value": "Train Amsterdam-Den Bosch"}], COMPANY, customer)
-        draft["draft_id"] = "AB23"
-        content = invoice.frozen_content(draft, COMPANY, customer, TEMPLATE)
-        text = invoice.render_summary(draft, content, "f" * 32)
+    def test_header_and_alignment_rows(self):
+        rows = self.table(self.summary())
+        self.assertEqual(rows[0], "| Item | Qty | Unit price | Amount |")
+        self.assertEqual(rows[1], "|:---|---:|---:|---:|")
+        # A blank line on each side keeps the table its own block.
+        lines = self.summary().split("\n")
+        first, last = lines.index(rows[0]), lines.index(rows[-1])
+        self.assertEqual(lines[first - 1], "")
+        self.assertEqual(lines[last + 1], "")
+
+    def test_every_row_has_four_cells(self):
+        text = self.summary(edits=[{"op": "add_item", "item": {
+            "description": "a | b || c \\| d", "detail": "x|y", "qty": "1",
+            "unit_price": "1.00"}}])
+        for row in self.table(text)[2:]:
+            self.assertEqual(len(_cells(row)), 4, row)
+
+    def test_markdown_in_a_description_is_escaped(self):
+        desc = "Fees | *rush* **job** [x](y) `c` ~~s~~ ==hl== $a$ <b>x</b> \\ end"
+        text = self.summary(edits=[{"op": "add_item", "item": {
+            "description": desc, "qty": "1", "unit_price": "1.00"}}])
+        row = next(r for r in self.table(text) if "`L3`" in r)
+        self.assertEqual(_cells(row)[0],
+                         "`L3` Fees \\| \\*rush\\* \\*\\*job\\*\\* \\[x\\](y) \\`c\\` "
+                         "\\~\\~s\\~\\~ \\=\\=hl\\=\\= \\$a\\$ \\<b>x\\</b> \\\\ end")
+
+    def test_ampersand_escaped_only_where_it_would_form_an_entity(self):
+        text = self.summary(edits=[{"op": "change_item", "id": "L2", "field": "description",
+                                    "value": "R&D & travel &amp; more &#95;"}])
+        self.assertIn("| `L2` R&D & travel &amp;amp; more &amp;#95; |", text)
+
+    def test_underscores_are_left_to_casa(self):
+        text = self.summary(edits=[{"op": "change_item", "id": "L2", "field": "description",
+                                    "value": "snake_case_name"}])
+        self.assertIn("| `L2` snake_case_name |", text)
+
+    def test_long_description_is_kept_whole(self):
+        long = "Consulting on the quarterly regulatory submission package for the EMA"
+        text = self.summary(edits=[{"op": "change_item", "id": "L2", "field": "description",
+                                    "value": long}])
+        self.assertIn(f"| `L2` {long} | 2 | € 178,92 | € 357,84 |", text)
+        self.assertNotIn("…", text)
+
+    def test_item_with_detail(self):
+        rows = self.table(self.summary())
+        self.assertEqual(_cells(rows[2]), [
+            "`L1` Management fee<br>Management services November 2026",
+            "1", "€ 8.400,00", "€ 8.400,00"])
+        self.assertEqual(_cells(rows[3])[0], "`L2` Travel expenses")
+
+    def test_detail_is_escaped_too(self):
+        text = self.summary(edits=[{"op": "change_item", "id": "L2", "field": "detail",
+                                    "value": "Train A|B *2*"}])
+        self.assertIn("| `L2` Travel expenses<br>Train A\\|B \\*2\\* |", text)
+
+    def test_rows_show_ids_qty_and_unit_price_in_draft_order(self):
+        text = self.summary(edits=[
+            {"op": "remove_item", "id": "L1"},
+            {"op": "add_item", "item": {"description": "Consulting", "qty": "1.5",
+                                        "unit_price": "100.00"}}])
+        rows = self.table(text)
+        self.assertEqual(rows[2], "| `L2` Travel expenses | 2 | € 178,92 | € 357,84 |")
+        self.assertEqual(rows[3], "| `L1` Consulting | 1,5 | € 100,00 | € 150,00 |")
+
+    def test_vat_row(self):
+        text = self.summary(edits=[{"op": "set", "field": "vat_rate", "value": "12.5"}])
+        rows = self.table(text)
+        self.assertEqual(rows[-3], "| Subtotal |  |  | € 8.757,84 |")
+        self.assertEqual(rows[-2], "| BTW 12.5% |  |  | € 1.094,73 |")
+
+    def test_tax_name_is_escaped(self):
+        company = {**COMPANY, "tax_name": "VAT*"}
+        rows = self.table(self.summary(company=company))
+        self.assertEqual(rows[-2], "| VAT\\* 21% |  |  | € 1.839,15 |")
+
+    def test_total_row_and_total_line(self):
+        text = self.summary()
+        self.assertEqual(self.table(text)[-1], "| **Total** |  |  | **€ 10.596,99** |")
+        self.assertIn("\n\n**Total: € 10.596,99**\nDraft: AB23\nRef: " + "f" * 32, text)
+
+    def test_dollar_amounts_are_not_read_as_math(self):
+        company = {**COMPANY, "currency": "USD", "locale": "en-US"}
+        rows = self.table(self.summary(company=company))
+        self.assertEqual(rows[-1], "| **Total** |  |  | **\\$10,596.99** |")
+
+    def test_customer_name_and_notes_are_escaped(self):
+        customer = {**CUSTOMER, "name": "A*B | C [x]", "payment_terms_days": 1}
+        text = self.summary(customer=customer, items=ITEMS[1:], edits=[
+            {"op": "set", "field": "notes", "value": "PO *4711*"}])
         lines = text.split("\n")
-        self.assertEqual(lines[0], "**Draft AB23 — Acme Biotech B.V.**")
+        self.assertEqual(lines[0], "**Draft AB23 — A\\*B \\| C \\[x\\]**")
         self.assertEqual(lines[1], "Invoice date: 30-11-2026 · Due: 01-12-2026 (1 day)")
-        self.assertEqual(lines[2], "Notes: PO 4711")
-        self.assertEqual(lines[3], "```")
+        self.assertEqual(lines[2], "Notes: PO \\*4711\\*")
+        self.assertEqual(lines[3], "")
         self.assertNotIn("Copied from", text)
-        self.assertEqual(lines[4], "L1  Travel expenses")
-        self.assertEqual(lines[5], "    Train Amsterdam-Den Bosch")
-        self.assertEqual(lines[6], "    2 × € 178,92            € 357,84")
-        self.assertEqual(lines[9], "BTW 12.5%                    € 44,73")
         self.assertTrue(text.endswith("Draft: AB23\nRef: " + "f" * 32))
 
 

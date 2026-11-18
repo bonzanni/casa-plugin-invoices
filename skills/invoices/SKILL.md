@@ -15,7 +15,11 @@ field lists; this skill covers how to use them well.
 ## Ground rules
 
 - **Never compute, check or restate an amount.** The tools do all arithmetic. Paste
-  every summary they return verbatim (code fences included); don't reformat it.
+  every summary they return verbatim (it is Markdown with a table); don't reformat it.
+- Lists the tools return are shown to the operator as a narrow table with named
+  columns: invoices and drafts as Number (the draft id for a draft), Customer, Period
+  (the invoice date when there is none) and Total; customers as Id, Name and Email (to); a
+  fetched invoice's lines as Item, Qty and Unit price, with its totals as returned.
 - Amounts you pass are plain decimals with a dot: `"13000.00"`, never `"13.000,00"`
   or `"13,000.00"`.
 - Ask only for what the plugin does not already know. Previous invoices, customer
@@ -48,10 +52,11 @@ fresh start use `from: "none"` with the items.
 After a copy, read the copied descriptions and details: if one names the previous
 period (a month, quarter or date), propose updating it when you show the summary.
 
-Each summary line starts with its id (`L1  Management fee`), then the detail on its
-own line when set, then qty × unit price and the line amount. Ids stay with their
-line after edits; they are not positions. Changes go through `invoice_edit` with a
-list of flat operations, applied all or none, using the ids in the current summary:
+Each table row in the summary starts with the line's id (`L1` Management fee), with
+the detail under the description when set, then the qty, the unit price and the line
+amount. Ids stay with their line after edits; they are not positions. Changes go
+through `invoice_edit` with a list of flat operations, applied all or none, using the
+ids in the current summary:
 
 ```
 {"op": "change_item", "id": "L1", "field": "unit_price", "value": "13000.00"}
